@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Absolute path to file realmlist.wtf
+REALMLIST="/home/samuel/.Games/WoW Brasil/Data/enUS/realmlist.wtf"
+
+# Set var as integer for using as array index
+declare -i realm_index
+
+
+
+get_realmlist_info() {
+    echo "listing available realms..."
+    echo ""
+
+    # Get line number of each entry in file
+    line_numbers=($(cat "${REALMLIST}" | grep -En 'set\srealmlist\s' | cut -d ':' -f1))
+
+    # Get only the address of realmlist (i.e. logon.warmane.com)
+    realms=($(cat "${REALMLIST}" | grep -E 'set\srealmlist\s' | cut -d ' ' -f3))
+
+    # For each element in line_numbers, print its index+1(for option), then te realm name in the same index as line_numbers(from realms) 
+    for i in ${!line_numbers[@]}; do
+        echo "[$((i+1))] ${realms[i]}"
+    done
+}
+
+
+
+set_realm() {
+    # Decrease 1 from selected option in order to match arrays index again
+    realm_index=$((realm_index-1))
+
+    # Set line number of desired realm entry
+    entry_line=${line_numbers[realm_index]}
+
+    echo ""
+    echo "changing to ${realms[realm_index]}"
+
+    # Comment all entries
+    sed -i "s/^set/#set/g" "${REALMLIST}"
+
+    #uncomment the entry that matches line number
+    sed -i "${entry_line}s/^#//g" "${REALMLIST}"
+
+    check_for_patchlist
+}
+
+
+
+check_for_patchlist() {
+    # Check if next line is a 'set patchlist ...'
+    sed "$((entry_line+1))!d" "${REALMLIST}" | grep -Eq 'set\spatchlist\s'
+    if [ $? -eq 0 ]; then
+        set_patchlist
+    fi
+}
+
+
+
+set_patchlist() {
+    echo "applying patchlist"
+
+    #uncomment the entry that matches line number
+    sed -i "$((entry_line+1))s/^#//g" "${REALMLIST}"
+}
+
+
+
+
+
+
+
+###############################################################
+######################### ENTRY POINT #########################
+###############################################################
+
+clear
+get_realmlist_info
+
+echo ""
+echo "Which realm would you like to play next?"
+read realm_index
+
+set_realm
+
+echo ""
+echo "Done. Have Fun!!!"
+echo ""
+
